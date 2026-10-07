@@ -1,0 +1,6 @@
+.DS_Store
+
+# Real artifact URL and other local-only values -- this repo is public
+CLAUDE.local.md
+*.local.md
+.claude/settings.local.json

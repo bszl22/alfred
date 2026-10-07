@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Alfred</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --surface: #ffffff;
+    --surface-raised: #fffefb;
+    --ink: #1b2420;
+    --muted: #6e7570;
+    --faint: #9aa19b;
+    --accent: #2f5d4c;
+    --accent-ink: #f6f4ef;
+    --accent-soft: #e4ede8;
+    --success: #3f7d5c;
+    --warning: #b8863b;
+    --warning-soft: #f3e7d2;
+    --critical: #a6413a;
+    --critical-soft: #f3ddd9;
+    --border: #ddd8cc;
+    --border-strong: #c8c2b2;
+    --shadow: 0 1px 2px rgba(27,36,32,0.04), 0 4px 14px rgba(27,36,32,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121614;
+      --surface: #1b2119;
+      --surface-raised: #212820;
+      --ink: #e9e5da;
+      --muted: #9ba39c;
+      --faint: #6c756e;
+      --accent: #7fb79b;
+      --accent-ink: #10160f;
+      --accent-soft: #22332b;
+      --success: #6fb98f;
+      --warning: #d9a85c;
+      --warning-soft: #3a3122;
+      --critical: #d97869;
+      --critical-soft: #3a2521;
+      --border: #2c3630;
+      --border-strong: #3a453d;
+      --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 4px 18px rgba(0,0,0,0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121614;
+    --surface: #1b2119;
+    --surface-raised: #212820;
+    --ink: #e9e5da;
+    --muted: #9ba39c;
+    --faint: #6c756e;
+    --accent: #7fb79b;
+    --accent-ink: #10160f;
+    --accent-soft: #22332b;
+    --success: #6fb98f;
+    --warning: #d9a85c;
+    --warning-soft: #3a3122;
+    --critical: #d97869;
+    --critical-soft: #3a2521;
+    --border: #2c3630;
+    --border-strong: #3a453d;
+    --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 4px 18px rgba(0,0,0,0.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Public Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+  h1, h2, h3 { font-family: "Fraunces", Georgia, serif; text-wrap: balance; margin: 0; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* ---- Header ---- */
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 { font-size: 26px; font-weight: 600; letter-spacing: 0.01em; }
+  .brand .sub { color: var(--muted); font-size: 13px; }
+  .top-right { display: flex; align-items: center; gap: 10px; }
+  .date-chip {
+    font-size: 13px; color: var(--muted);
+  }
+  .quarter-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-soft); color: var(--accent);
+    border-radius: 999px; padding: 6px 12px 6px 10px;
+    font-size: 12.5px; font-weight: 600;
+    border: 1px solid transparent;
+  }
+  .quarter-chip.warn { background: var(--warning-soft); color: var(--warning); }
+  .quarter-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .refresh-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    border-radius: 999px; padding: 6px 12px; font-family: inherit; font-size: 12.5px;
+    font-weight: 600; cursor: pointer;
+  }
+  .refresh-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .refresh-btn svg { transition: transform 0.5s ease; }
+  .refresh-btn.spinning svg { transform: rotate(360deg); }
+  .updated-note { color: var(--faint); font-size: 11px; text-align: center; margin-top: 6px; }
+
+  /* ---- Layout ---- */
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .col { display: flex; flex-direction: column; gap: 20px; }
+
+  section.panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 18px 18px 16px;
+  }
+  .panel-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .panel-head h2 { font-size: 17px; font-weight: 600; }
+  .panel-head .count { color: var(--muted); font-size: 12.5px; }
+
+  /* ---- Goal cards ---- */
+  .goal-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--surface-raised);
+  }
+  .goal-card + .goal-card { margin-top: 12px; }
+  .goal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .goal-name { font-size: 16px; font-weight: 500; }
+  .goal-target { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .goal-score {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 20px; font-weight: 500;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .goal-score .of { color: var(--faint); font-size: 13px; }
+  .track-pill {
+    display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); background: var(--accent-soft); border-radius: 6px;
+    padding: 2px 6px; margin-top: 8px;
+  }
+  .bar-track {
+    margin-top: 10px; height: 6px; border-radius: 4px; background: var(--border);
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s ease; }
+  .bar-fill.warn { background: var(--warning); }
+  .bar-fill.crit { background: var(--critical); }
+  .goal-empty {
+    margin-top: 10px; font-size: 12.5px; color: var(--faint); font-style: italic;
+  }
+  .checkin-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .checkin-done { font-size: 12.5px; color: var(--muted); font-style: italic; }
+
+  /* ---- Sub-goals (milestone tracking, added 2026-09-14) ---- */
+  .subgoal-toggle {
+    display: inline-flex; align-items: center; margin-left: 8px; vertical-align: middle;
+    font-family: "Public Sans", sans-serif; font-size: 11px; font-weight: 600; color: var(--muted);
+    background: none; border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px;
+    cursor: pointer;
+  }
+  .subgoal-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .subgoal-section { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .subgoal-section.collapsed { display: none; }
+  .subgoal-item + .subgoal-item { margin-top: 10px; }
+  .subgoal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .subgoal-name { font-size: 13.5px; font-weight: 600; }
+  .subgoal-meta { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .subgoal-bar-track { margin-top: 6px; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .subgoal-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
+  .subgoal-due { margin-top: 4px; font-size: 11.5px; color: var(--faint); }
+
+  /* ---- To-do list ---- */
+  ul.todo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .todo-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 10px; border-radius: 8px; border: 1px solid transparent;
+  }
+  .todo-item:hover { background: var(--accent-soft); }
+  .todo-check {
+    width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border-strong);
+    flex: none; margin-top: 2px; cursor: pointer; background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .todo-check.done { background: var(--accent); border-color: var(--accent); }
+  .todo-check.done::after { content: "✓"; color: var(--accent-ink); font-size: 12px; line-height: 1; }
+  .todo-text { flex: 1; min-width: 0; overflow-wrap: break-word; font-size: 14px; line-height: 1.4; }
+  .todo-text.done { text-decoration: line-through; color: var(--faint); }
+  .todo-tag {
+    font-size: 10.5px; color: var(--accent); background: var(--accent-soft);
+    border-radius: 5px; padding: 1px 6px; margin-left: 6px; white-space: nowrap;
+  }
+  .todo-tag.suggested { color: var(--muted); background: var(--bg); border: 1px solid var(--border); }
+  .todo-tag.admin { color: var(--warning); background: var(--warning-soft); }
+
+  /* ---- Due badges (task due dates + recurring admin, merged into Today's to-do) ---- */
+  .admin-due { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .admin-due.ok { color: var(--muted); background: var(--accent-soft); }
+  .admin-due.soon { color: var(--warning); background: var(--warning-soft); }
+  .admin-due.over { color: var(--critical); background: var(--critical-soft); }
+
+  /* ---- Calendar outlook ---- */
+  .outlook-panel { margin-bottom: 20px; }
+  .outlook-row {
+    display: flex; gap: 16px; overflow-x: auto; padding-bottom: 2px;
+  }
+  .outlook-day {
+    flex: 1 0 130px; min-width: 130px;
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; background: var(--surface-raised);
+  }
+  .outlook-day.today { border-color: var(--accent); background: var(--accent-soft); }
+  .outlook-day-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); font-weight: 600; margin-bottom: 8px;
+  }
+  .outlook-day.today .outlook-day-label { color: var(--accent); }
+  .outlook-event { font-size: 13px; line-height: 1.4; margin-bottom: 6px; }
+  .outlook-event:last-child { margin-bottom: 0; }
+  .outlook-event .time {
+    display: block; color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  }
+
+  .empty-state { color: var(--faint); font-size: 13px; font-style: italic; padding: 6px 2px; }
+
+  /* ---- Chat ---- */
+  .chat-panel { margin-bottom: 20px; }
+  .chat-head-row { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  #connector-status { font-size: 11.5px; }
+  .chat-messages {
+    display: flex; flex-direction: column; gap: 10px;
+    max-height: 360px; overflow-y: auto; padding: 4px 2px 8px;
+  }
+  .chat-msg { max-width: 88%; padding: 9px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; }
+  .chat-msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 3px; }
+  .chat-msg.assistant { align-self: flex-start; background: var(--surface-raised); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+  .chat-msg.thinking { color: var(--faint); font-style: italic; }
+  .chat-msg.error { align-self: flex-start; background: var(--critical-soft); color: var(--critical); border: 1px solid transparent; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 12px; }
+  .chat-input-row textarea {
+    flex: 1; resize: none; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px;
+    font-family: inherit; font-size: 13.5px; background: var(--bg); color: var(--ink); min-height: 40px; max-height: 120px;
+  }
+  .chat-input-row textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chat-input-row button {
+    border: none; border-radius: 10px; background: var(--accent); color: var(--accent-ink);
+    font-family: inherit; font-size: 13px; font-weight: 600; padding: 0 16px; cursor: pointer;
+  }
+  .chat-input-row button:disabled { opacity: 0.5; cursor: default; }
+  .chat-empty { color: var(--faint); font-size: 13px; font-style: italic; padding: 10px 2px; }
+
+  footer.foot { text-align: center; color: var(--faint); font-size: 11.5px; margin-top: 28px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Alfred</h1>
+      <span class="sub">mission support</span>
+    </div>
+    <div class="top-right">
+      <span class="date-chip" id="today-chip"></span>
+      <span class="quarter-chip" id="quarter-chip"><span class="dot"></span><span id="quarter-text">—</span></span>
+      <button class="refresh-btn" id="refresh-btn" title="Reload from the shared store" aria-label="Refresh">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.89M13.5 2.5v3.5H10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="refresh-label">Refresh</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="panel chat-panel">
+    <div class="chat-head-row">
+      <h2>Ask Alfred</h2>
+      <span id="connector-status"></span>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-empty">Ask about your goals, log something, ask for a brief, or ask Alfred to sync your calendar/job tracker/email.</div>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="chat-input" placeholder="Ask Alfred anything…" rows="1"></textarea>
+      <button id="chat-send-btn">Send</button>
+    </div>
+  </section>
+
+  <section class="panel outlook-panel">
+    <div class="panel-head">
+      <h2>Calendar outlook</h2>
+      <span class="count" id="outlook-count"></span>
+    </div>
+    <div class="outlook-row" id="outlook-row"></div>
+  </section>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Goals — Q3 2026</h2>
+          <span class="count" id="goals-count"></span>
+        </div>
+        <div id="goals-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Sub-goals</h2>
+          <span class="count" id="subgoals-count"></span>
+        </div>
+        <div id="subgoals-list"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Today's to-do</h2>
+          <span class="count" id="todo-count"></span>
+        </div>
+        <ul class="todo-list" id="todo-list"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Ad-hoc tasks</h2>
+          <span class="count" id="adhoc-count"></span>
+        </div>
+        <p class="goal-target" style="margin-bottom:10px;">Things to remember and get around to — not tied to today. Log new ones via "Ask Alfred" above.</p>
+        <ul class="todo-list" id="adhoc-list"></ul>
+      </section>
+    </div>
+  </div>
+
+  <footer class="foot">
+    Alfred reads and writes this page's shared store.
+    <div class="updated-note" id="updated-note"></div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const QUARTER_START = "2026-07-01";
+  const QUARTER_END = "2026-09-30";
+  // External source IDs (calendar ids, sheet names/file ids) live in the hosted store's
+  // config/sources doc rather than in this file -- loaded by loadSources() below.
+  let sources = null;
+  // Set once main() resolves the db capability -- the chat tool functions below
+  // reuse this reference rather than re-resolving claude.use("db") per call.
+  let dbClient = null;
+
+  async function loadSources() {
+    if (sources || !dbClient) return sources;
+    try {
+      const snap = await dbClient.doc("config/sources").get();
+      if (snap.exists) sources = snap.data();
+    } catch (err) {
+      console.error("config/sources failed to load", err);
+    }
+    return sources;
+  }
+
+  const todayChip = document.getElementById("today-chip");
+  const qChip = document.getElementById("quarter-chip");
+  const qText = document.getElementById("quarter-text");
+  function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+  const qEnd = new Date(QUARTER_END + "T23:59:59");
+
+  // now/todayMidnight/todayStr/daysLeft are recomputed by updateTimeContext() on every
+  // render pass rather than captured once -- main() and sendChatMessage() can both run long
+  // after script load (Refresh, task toggles, admin completions, a chat message sent hours
+  // later), and a tab left open across midnight must not keep treating the load-time date as
+  // "today" for due-date/outlook/completed-task logic or for what Alfred's chat is told the
+  // date is.
+  let now, todayMidnight, todayStr, daysLeft;
+  function updateTimeContext() {
+    now = new Date();
+    todayStr = now.toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+    todayMidnight = new Date(todayStr + "T00:00:00");
+    daysLeft = daysBetween(now, qEnd);
+    todayChip.textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    qChip.classList.remove("warn");
+    if (daysLeft <= 14 && daysLeft >= 0) {
+      qChip.classList.add("warn");
+      qText.textContent = daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left in Q3";
+    } else if (daysLeft < 0) {
+      qChip.classList.add("warn");
+      qText.textContent = "Q3 closed";
+    } else {
+      qText.textContent = daysLeft + " days left in Q3";
+    }
+  }
+  updateTimeContext();
+
+  const goalsList = document.getElementById("goals-list");
+  const goalsCount = document.getElementById("goals-count");
+  const subgoalsList = document.getElementById("subgoals-list");
+  const subgoalsCount = document.getElementById("subgoals-count");
+  const todoList = document.getElementById("todo-list");
+  const todoCount = document.getElementById("todo-count");
+  const adhocList = document.getElementById("adhoc-list");
+  const adhocCount = document.getElementById("adhoc-count");
+  const outlookRow = document.getElementById("outlook-row");
+  const outlookCount = document.getElementById("outlook-count");
+  const OUTLOOK_DAYS = 7;
+  function isoDateOffset(n) {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toLocaleDateString("en-CA");
+  }
+  // Monday-start ISO week key for a date, matching how goal_progress period_start is stored
+  // for "week" period_type docs (exercise, job-search).
+  function isoWeekMonday(d) {
+    const day = d.getDay(); // 0 (Sun) .. 6 (Sat)
+    const diff = (day === 0 ? -6 : 1) - day;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diff);
+    return monday.toLocaleDateString("en-CA");
+  }
+  function dayLabel(dateStr, offset) {
+    if (offset === 0) return "Today";
+    if (offset === 1) return "Tomorrow";
+    return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" });
+  }
+  const refreshBtn = document.getElementById("refresh-btn");
+  const refreshLabel = document.getElementById("refresh-label");
+  const updatedNote = document.getElementById("updated-note");
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function renderGoalCard(goal, latestProgress, subgoalCount) {
+    const el = document.createElement("div");
+    el.className = "goal-card";
+    let scoreHtml, barHtml, emptyHtml = "";
+
+    if (!latestProgress) {
+      scoreHtml = `<span class="goal-score num">—</span>`;
+      barHtml = `<div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>`;
+      emptyHtml = `<div class="goal-empty">No progress logged yet this quarter.</div>`;
+    } else if (goal.tracking_method === "calendar_derived") {
+      const count = latestProgress.raw_inputs && latestProgress.raw_inputs.count != null ? latestProgress.raw_inputs.count : 0;
+      const targetN = 5;
+      const pct = Math.min(100, Math.round((count / targetN) * 100));
+      scoreHtml = `<span class="goal-score num">${count}<span class="of"> / ${targetN}</span></span>`;
+      barHtml = `<div class="bar-track"><div class="bar-fill ${pct < 60 ? "warn" : ""}" style="width:${pct}%"></div></div>`;
+    } else if (goal.tracking_method === "binary_checkin") {
+      // Calendar-week count (Mon-Sun), computed fresh from this week's daily docs at render
+      // time -- never stored as a standalone field, so it can't go stale the way a persisted
+      // "rolling_7d_count" did (confirmed 2026-09-14: it kept showing an old count for days
+      // after the last report, since nothing recomputed it as time passed with no new logs).
+      const count = latestProgress.raw_inputs && latestProgress.raw_inputs.count != null ? latestProgress.raw_inputs.count : 0;
+      const cap = 2;
+      const pct = Math.min(100, Math.round((count / cap) * 100));
+      const cls = count > cap ? "crit" : (count === cap ? "warn" : "");
+      scoreHtml = `<span class="goal-score num">${count}<span class="of"> / ${cap} (week)</span></span>`;
+      barHtml = `<div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>`;
+    } else {
+      const score = latestProgress.score != null ? Number(latestProgress.score).toFixed(1) : "—";
+      const pct = latestProgress.score != null ? Math.min(100, latestProgress.score * 10) : 0;
+      scoreHtml = `<span class="goal-score num">${score}<span class="of"> / 10</span></span>`;
+      barHtml = `<div class="bar-track"><div class="bar-fill ${pct < 40 ? "warn" : ""}" style="width:${pct}%"></div></div>`;
+    }
+    if (latestProgress && latestProgress._pendingSync) {
+      emptyHtml = `<div class="goal-empty">This week hasn't synced yet — ask Alfred to sync, or open the dashboard chat.</div>`;
+    }
+
+    let checkinHtml = "";
+    if (goal.tracking_method === "binary_checkin" && latestProgress && latestProgress.period_start) {
+      checkinHtml = `<div class="checkin-row"><span class="checkin-done">Last reported: ${escapeHtml(latestProgress.period_start)}</span></div>`;
+    }
+
+    const toggleHtml = subgoalCount > 0
+      ? `<button type="button" class="subgoal-toggle" aria-expanded="false">▸ ${subgoalCount} sub-goal${subgoalCount > 1 ? "s" : ""}</button>`
+      : "";
+    el.innerHTML = `
+      <div class="goal-top">
+        <div>
+          <div class="goal-name">${escapeHtml(goal.name)}${toggleHtml}</div>
+          <div class="goal-target">${escapeHtml(goal.target || "")}</div>
+        </div>
+        ${scoreHtml}
+      </div>
+      ${barHtml}
+      ${emptyHtml}
+      ${checkinHtml}
+      <span class="track-pill">${escapeHtml((goal.tracking_method || "").replace("_", " "))}</span>
+    `;
+    return el;
+  }
+
+  // Sub-goal (tracking_method: "milestone_tasks") progress -- always computed live from its
+  // linked tasks' estimated_minutes, never a stored aggregate (same principle as the exercise/
+  // habit goals' live counts). Returns an HTML fragment reused for both the standalone
+  // "Sub-goals" panel and a nested block inside a parent goal's card.
+  function subgoalProgressHtml(goal, tasksForGoal) {
+    const totalMin = goal.estimated_minutes || 0;
+    const doneMin = (tasksForGoal || [])
+      .filter(t => t.status === "done")
+      .reduce((sum, t) => sum + (t.estimated_minutes || 0), 0);
+    const pct = totalMin > 0 ? Math.min(100, Math.round((doneMin / totalMin) * 100)) : 0;
+    let dueText = "";
+    if (goal.due_date) {
+      const diff = daysBetween(todayMidnight, new Date(goal.due_date + "T00:00:00"));
+      dueText = diff < 0 ? Math.abs(diff) + "d overdue" : (diff === 0 ? "due today" : "due in " + diff + "d");
+    }
+    return `
+      <div class="subgoal-top">
+        <span class="subgoal-name">${escapeHtml(goal.name)}</span>
+        <span class="subgoal-meta num">${doneMin}/${totalMin}m</span>
+      </div>
+      <div class="subgoal-bar-track"><div class="subgoal-bar-fill" style="width:${pct}%"></div></div>
+      <div class="subgoal-due">${pct}% complete${dueText ? " · " + escapeHtml(dueText) : ""}</div>
+    `;
+  }
+
+  function dueClass(nextDue) {
+    if (!nextDue) return "ok";
+    const d = new Date(nextDue + "T00:00:00");
+    const diff = daysBetween(todayMidnight, d);
+    if (diff < 0) return "over";
+    if (diff <= 3) return "soon";
+    return "ok";
+  }
+  function dueLabel(nextDue) {
+    if (!nextDue) return "no date set";
+    const d = new Date(nextDue + "T00:00:00");
+    const diff = daysBetween(todayMidnight, d);
+    if (diff < 0) return Math.abs(diff) + "d overdue";
+    if (diff === 0) return "due today";
+    return "due in " + diff + "d";
+  }
+
+  async function main() {
+    updateTimeContext();
+    const db = (window.claude && (await window.claude.use("db"))) || null;
+    dbClient = db;
+    if (!db) {
+      goalsList.innerHTML = `<div class="empty-state">Database unavailable in this view — open the published page to see live data.</div>`;
+      return;
+    }
+    refreshBtn.classList.add("spinning");
+    refreshLabel.textContent = "Loading…";
+
+    // Goals + their latest progress. Sub-goals (tracking_method: "milestone_tasks", added
+    // 2026-09-14) are split out here -- they're finite one-off projects, not recurring
+    // weekly-scored goals, so they don't go through the goal_progress lookup below at all;
+    // their progress comes from summing estimated_minutes on their own linked tasks instead
+    // (see subgoalProgressHtml above).
+    const goalsSnap = await db.collection("goals").where("status", "==", "active").get();
+    const allGoals = goalsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const goals = allGoals.filter(g => g.tracking_method !== "milestone_tasks");
+    const subgoals = allGoals.filter(g => g.tracking_method === "milestone_tasks");
+    const tasksBySubgoal = {};
+    if (subgoals.length > 0) {
+      const sgTasksSnap = await db.collection("tasks")
+        .where("linked_goal_id", "in", subgoals.map(g => g.id)).get();
+      for (const doc of sgTasksSnap.docs) {
+        const t = { id: doc.id, ...doc.data() };
+        (tasksBySubgoal[t.linked_goal_id] = tasksBySubgoal[t.linked_goal_id] || []).push(t);
+      }
+    }
+    goalsCount.textContent = goals.length + " active";
+    goalsList.innerHTML = "";
+    if (goals.length === 0) {
+      goalsList.innerHTML = `<div class="empty-state">No active goals yet.</div>`;
+    }
+    for (const goal of goals) {
+      let latest = null;
+      try {
+        if (goal.tracking_method === "binary_checkin") {
+          // Calendar-week reset (changed 2026-09-14, Bryan's call -- was a rolling 7-day
+          // window, which he found confusing on a fresh Monday). Sum this week's (Mon-today)
+          // daily docs live on every load, rather than trusting any stored aggregate --
+          // a persisted count only updates when Bryan reports, so it goes stale the moment a
+          // few days pass with nothing logged. "Last reported" uses the most recent daily doc
+          // across all time, even from a prior week, so it's still visible when it happened.
+          const daySnap = await db.collection("goal_progress")
+            .where("goal_id", "==", goal.id)
+            .where("period_type", "==", "day")
+            .get();
+          const dayDocs = daySnap.docs.map(d => d.data());
+          if (dayDocs.length > 0) {
+            const thisWeek = isoWeekMonday(new Date());
+            let weekCount = 0, lastDate = null;
+            for (const d of dayDocs) {
+              if (d.period_start >= thisWeek && d.period_start <= todayStr) weekCount += (d.raw_inputs && d.raw_inputs.count) || 0;
+              if (!lastDate || d.period_start > lastDate) lastDate = d.period_start;
+            }
+            latest = { raw_inputs: { count: weekCount }, period_start: lastDate };
+          }
+        } else {
+          // Weekly-scored goals (exercise, job-search) reset each ISO week -- show THIS
+          // week's doc specifically, not just "whichever period was scored most recently".
+          // Otherwise a new week with no sync yet displays last week's count as if current
+          // (confirmed bug 2026-09-15: exercise showed 4/5 on a fresh Monday with 0 workouts).
+          const thisWeek = isoWeekMonday(new Date());
+          const weekSnap = await db.doc("goal_progress/" + goal.id + "_" + thisWeek).get();
+          if (weekSnap.exists) {
+            latest = weekSnap.data();
+          } else {
+            const anySnap = await db.collection("goal_progress").where("goal_id", "==", goal.id).limit(1).get();
+            if (!anySnap.empty) latest = { raw_inputs: {}, score: null, period_start: thisWeek, _pendingSync: true };
+          }
+        }
+      } catch (e) { /* leave latest null on query error */ }
+      const children = subgoals.filter(sg => sg.parent_goal_id === goal.id);
+      const card = renderGoalCard(goal, latest, children.length);
+      if (children.length > 0) {
+        // Collapsed by default -- Bryan asked (2026-09-15) for sub-goals to live behind a
+        // click on the parent rather than always showing, so the goal list stays scannable.
+        const block = document.createElement("div");
+        block.className = "subgoal-section collapsed";
+        for (const sg of children) {
+          const item = document.createElement("div");
+          item.className = "subgoal-item";
+          item.innerHTML = subgoalProgressHtml(sg, tasksBySubgoal[sg.id]);
+          block.appendChild(item);
+        }
+        card.appendChild(block);
+        const toggle = card.querySelector(".subgoal-toggle");
+        toggle.addEventListener("click", () => {
+          const nowCollapsed = block.classList.toggle("collapsed");
+          toggle.setAttribute("aria-expanded", String(!nowCollapsed));
+          toggle.textContent = (nowCollapsed ? "▸ " : "▾ ") + children.length + " sub-goal" + (children.length > 1 ? "s" : "");
+        });
+      }
+      goalsList.appendChild(card);
+    }
+
+    // Standalone sub-goals -- ones with no parent_goal_id get their own card here instead of
+    // nesting inside a parent's (see "Dashboard" under "Sub-goals" in SKILL.md).
+    const standaloneSubgoals = subgoals.filter(sg => !sg.parent_goal_id);
+    subgoalsCount.textContent = standaloneSubgoals.length + " active";
+    subgoalsList.innerHTML = "";
+    if (standaloneSubgoals.length === 0) {
+      subgoalsList.innerHTML = `<div class="empty-state">No standalone sub-goals yet.</div>`;
+    }
+    for (const sg of standaloneSubgoals) {
+      const el = document.createElement("div");
+      el.className = "goal-card";
+      el.innerHTML = subgoalProgressHtml(sg, tasksBySubgoal[sg.id]);
+      subgoalsList.appendChild(el);
+    }
+
+    // Tasks — split into today's to-do (suggested, or explicitly due today) vs. the
+    // ad-hoc backlog (logged to remember, not necessarily for today)
+    const tasksSnap = await db.collection("tasks").where("status", "in", ["pending", "done"]).get();
+    let tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // A checked-off task stays visible (struck through) for the rest of the day it was
+    // completed, then drops off the list once that day ends -- it's still "done" in the
+    // data (query support/counting is unaffected), just no longer cluttering the view.
+    tasks = tasks.filter(t => {
+      if (t.status !== "done") return true;
+      const completedDate = t.completed_at ? new Date(t.completed_at).toLocaleDateString("en-CA") : null;
+      return completedDate === todayStr;
+    });
+    tasks.sort((a, b) => {
+      if ((a.status === "done") !== (b.status === "done")) return a.status === "done" ? 1 : -1;
+      return (a.created_at || "").localeCompare(b.created_at || "");
+    });
+
+    // Generic renderer for a mixed list of to-do-shaped entries -- either a real `tasks`
+    // doc or a recurring_admin item that's become due/soon/overdue (see below, "add them
+    // to the to-do when necessary" replaces the old standalone "Recurring admin" panel:
+    // Alfred still remembers every item in `recurring_admin`, it just only surfaces one
+    // here once dueClass says so, same threshold as before).
+    function renderEntries(listEl, countEl, entries, emptyMsg) {
+      countEl.textContent = entries.filter(e => !e.done).length + " open";
+      listEl.innerHTML = "";
+      if (entries.length === 0) {
+        listEl.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+        return;
+      }
+      for (const entry of entries) {
+        const li = document.createElement("li");
+        li.className = "todo-item";
+        li.innerHTML = `
+          <div class="todo-check ${entry.done ? "done" : ""}" role="checkbox" aria-checked="${entry.done}" tabindex="0"></div>
+          <div class="todo-text ${entry.done ? "done" : ""}">${escapeHtml(entry.description)}${entry.tagsHtml || ""}${entry.dueBadgeHtml || ""}</div>
+        `;
+        const check = li.querySelector(".todo-check");
+        check.addEventListener("click", entry.onToggle);
+        check.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); entry.onToggle(); } });
+        listEl.appendChild(li);
+      }
+    }
+
+    function taskEntry(t) {
+      const done = t.status === "done";
+      let dueBadgeHtml = "";
+      if (t.due_date) {
+        dueBadgeHtml = `<span class="admin-due ${dueClass(t.due_date)}" style="margin-left:6px; vertical-align:middle;">${dueLabel(t.due_date)}</span>`;
+      }
+      const tagsHtml = `${t.linked_goal_id ? `<span class="todo-tag">${escapeHtml(goalLabel(t.linked_goal_id, allGoals))}</span>` : ""}${t.source === "suggested" ? `<span class="todo-tag suggested">suggested</span>` : ""}`;
+      return { description: t.description, done, tagsHtml, dueBadgeHtml, onToggle: () => toggleTask(db, t) };
+    }
+
+    function adminEntry(it) {
+      const dueBadgeHtml = `<span class="admin-due ${dueClass(it.next_due_date)}" style="margin-left:6px; vertical-align:middle;">${dueLabel(it.next_due_date)}</span>`;
+      const tagsHtml = `<span class="todo-tag admin">admin</span>`;
+      return { description: it.name, done: false, tagsHtml, dueBadgeHtml, onToggle: () => markAdminDone(db, it) };
+    }
+
+    // A due-dated ad-hoc task joins Today's to-do once it's due within 3 days or overdue
+    // (same soon/overdue threshold as recurring admin) -- not only on the exact due date.
+    // Exception: a task explicitly scheduled FOR a specific day (surface_early: false --
+    // "on Tuesday", not "by Friday") shouldn't jump the backlog early just because that day
+    // is approaching; it only surfaces once it's actually due or overdue.
+    function isApproachingOrOverdue(task) {
+      if (!task.due_date) return false;
+      const d = new Date(task.due_date + "T00:00:00");
+      const diff = daysBetween(todayMidnight, d);
+      if (task.surface_early === false) return diff <= 0;
+      return diff <= 3;
+    }
+    // A suggested task's due_date always means "scheduled for that day" (e.g. a milestone
+    // sub-goal's study session Alfred proposed for Thursday), never a deadline to warn about
+    // early -- surface_early is an ad_hoc-only concept (see SKILL.md), so a suggested task
+    // ignores it entirely and only ever shows on the day itself or once overdue. Fixed
+    // 2026-09-15: previously ALL suggested tasks bypassed this and showed unconditionally
+    // regardless of due_date, so a session due in two days already cluttered Today's to-do.
+    function isSuggestedDueTodayOrOverdue(task) {
+      if (!task.due_date) return false;
+      return daysBetween(todayMidnight, new Date(task.due_date + "T00:00:00")) <= 0;
+    }
+    // Recurring admin -- Alfred remembers every item in `recurring_admin` regardless (no
+    // standalone panel for it any more), and only the ones that are due/soon/overdue join
+    // Today's to-do, same threshold dueClass has always used for tasks and admin alike.
+    const adminSnap = await db.collection("recurring_admin").get();
+    const adminItems = adminSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const dueAdminItems = adminItems
+      .filter(it => dueClass(it.next_due_date) !== "ok")
+      .sort((a, b) => (a.next_due_date || "9999").localeCompare(b.next_due_date || "9999"));
+
+    const todayTasks = tasks.filter(t => t.source === "suggested"
+      ? (!t.due_date || isSuggestedDueTodayOrOverdue(t))
+      : isApproachingOrOverdue(t));
+    // A scheduled-day ad_hoc task (surface_early: false -- "on Tuesday") is fully invisible
+    // until it's due, not just deferred out of Today's to-do into this backlog: Bryan asked
+    // (2026-09-15, prompted by "cook"/"groceries"/"gym session" all appearing here a day
+    // early) for these to live purely in the database until the day itself, the same
+    // treatment a scheduled suggested task already gets above. A plain deadline task
+    // (surface_early left at its true default -- "by Friday") is unaffected and still shows
+    // here as a backlog reminder up until its 3-day-early window kicks in.
+    const adhocTasks = tasks.filter(t => t.source !== "suggested" && t.surface_early !== false && !isApproachingOrOverdue(t));
+    const todayEntries = [...todayTasks.map(taskEntry), ...dueAdminItems.map(adminEntry)];
+    renderEntries(todoList, todoCount, todayEntries, "Nothing suggested for today yet.");
+    renderEntries(adhocList, adhocCount, adhocTasks.map(taskEntry), "Nothing logged yet — add one below.");
+
+    // Calendar outlook — notable events across the next week (both calendars Alfred syncs:
+    // Fitness + primary), not tasks to check off. Only days with events render a card.
+    try {
+      const endStr = isoDateOffset(OUTLOOK_DAYS - 1);
+      const ctxSnap = await db.collection("daily_context")
+        .where("date", ">=", todayStr).where("date", "<=", endStr)
+        .orderBy("date").get();
+      const byDate = {};
+      for (const doc of ctxSnap.docs) {
+        const d = doc.data();
+        if (d.events && d.events.length > 0) byDate[d.date] = d.events;
+      }
+      const dates = Object.keys(byDate).sort();
+      outlookRow.innerHTML = "";
+      if (dates.length === 0) {
+        outlookRow.innerHTML = `<div class="empty-state">Nothing notable on the calendar this week.</div>`;
+        outlookCount.textContent = "";
+      } else {
+        outlookCount.textContent = "next " + OUTLOOK_DAYS + " days";
+        for (const dateStr of dates) {
+          const offset = Math.round((new Date(dateStr + "T00:00:00") - new Date(todayStr + "T00:00:00")) / 86400000);
+          const dayEl = document.createElement("div");
+          dayEl.className = "outlook-day" + (offset === 0 ? " today" : "");
+          const eventsHtml = [...byDate[dateStr]]
+            .sort((a, b) => (a.start || "").localeCompare(b.start || ""))
+            .map(e => {
+              const time = e.start ? new Date(e.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "";
+              return `<div class="outlook-event">${escapeHtml(e.title)}${time ? `<span class="time">${time}</span>` : ""}</div>`;
+            }).join("");
+          dayEl.innerHTML = `<div class="outlook-day-label">${escapeHtml(dayLabel(dateStr, offset))}</div>${eventsHtml}`;
+          outlookRow.appendChild(dayEl);
+        }
+      }
+    } catch (e) {
+      console.error("Calendar outlook load error:", e);
+      outlookRow.innerHTML = `<div class="empty-state">Couldn't load the calendar outlook.</div>`;
+    }
+
+    refreshBtn.classList.remove("spinning");
+    refreshLabel.textContent = "Refresh";
+    updatedNote.textContent = "Loaded " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function goalLabel(goalId, goals) {
+    const g = goals.find(g => g.id === goalId);
+    return g ? g.name : "goal";
+  }
+
+  // Recurrence advancement for recurring_admin -- mirrors the formulas in SKILL.md so the
+  // dashboard can complete an item without any chat-side help.
+  function daysInMonth(year, monthIndex) { return new Date(year, monthIndex + 1, 0).getDate(); }
+  function nextMonthOnDay(fromDate, day) {
+    let year = fromDate.getFullYear(), month = fromDate.getMonth() + 1;
+    if (month > 11) { month = 0; year += 1; }
+    return new Date(year, month, Math.min(day, daysInMonth(year, month)));
+  }
+  function nextMonthEndMinus(fromDate, daysBefore) {
+    let year = fromDate.getFullYear(), month = fromDate.getMonth() + 1;
+    if (month > 11) { month = 0; year += 1; }
+    const d = new Date(year, month, daysInMonth(year, month));
+    d.setDate(d.getDate() - daysBefore);
+    return d;
+  }
+
+  // Shared by markAdminDone (the merged "admin" checkbox) and resetLinkedRecurringAdmin
+  // (completing a task linked via recurring_admin.linked_task_id) so the recurrence formulas
+  // live in exactly one place.
+  function computeNextDue(item, fromDateStr) {
+    const today = new Date(fromDateStr + "T00:00:00");
+    if (item.recurrence_type === "day_of_month") {
+      return nextMonthOnDay(today, item.day_of_month);
+    } else if (item.recurrence_type === "days_before_month_end") {
+      return nextMonthEndMinus(today, item.days_before_month_end);
+    }
+    const d = new Date(today);
+    d.setDate(d.getDate() + (item.interval_days || 30));
+    return d;
+  }
+
+  async function markAdminDone(db, item) {
+    const nextDue = computeNextDue(item, todayStr);
+    try {
+      await db.doc("recurring_admin/" + item.id).update({
+        last_completed_date: todayStr,
+        next_due_date: nextDue.toLocaleDateString("en-CA"),
+        linked_task_id: null,
+      });
+      main();
+    } catch (e) { /* transient error — leave UI as-is */ }
+  }
+
+  // Completing a task linked via recurring_admin.linked_task_id must reset that admin item's
+  // clock too (per SKILL.md's "Recurring admin" section) -- otherwise an item completed via its
+  // linked task (rather than the merged "admin" checkbox, which already does this) stays
+  // perpetually due/overdue. Normally at most one recurring_admin doc points at a given task.
+  async function resetLinkedRecurringAdmin(db, taskId) {
+    try {
+      const snap = await db.collection("recurring_admin").where("linked_task_id", "==", taskId).get();
+      for (const doc of snap.docs) {
+        const item = { id: doc.id, ...doc.data() };
+        const nextDue = computeNextDue(item, todayStr);
+        await db.doc("recurring_admin/" + item.id).update({
+          last_completed_date: todayStr,
+          next_due_date: nextDue.toLocaleDateString("en-CA"),
+          linked_task_id: null,
+        });
+      }
+    } catch (e) { /* transient error — leave admin doc as-is, next invocation can retry */ }
+  }
+
+  async function toggleTask(db, task) {
+    const nowIso = new Date().toISOString();
+    const newStatus = task.status === "done" ? "pending" : "done";
+    try {
+      await db.doc("tasks/" + task.id).update({
+        status: newStatus,
+        completed_at: newStatus === "done" ? nowIso : null,
+      });
+      if (newStatus === "done") await resetLinkedRecurringAdmin(db, task.id);
+      main();
+    } catch (e) { /* last-writer-wins conflict or transient error — leave UI as-is */ }
+  }
+
+  refreshBtn.addEventListener("click", () => main());
+
+  // ==========================================================================
+  // Chat -- a full, open-ended Alfred assistant hosted on the dashboard page.
+  // Design (agreed with Bryan 2026-09-14, see narrative/changelog):
+  //  - No persisted transcript. Each page load is a fresh Alfred session that
+  //    reconstructs everything from `db`, same as the "Daily brief" entry
+  //    point in SKILL.md ("no memory of past runs").
+  //  - Tool functions are a deliberately thin fetch/write boundary -- they
+  //    never parse dates or filter events. All of that interpretation is left
+  //    to Claude (via `sample`), guided by ALFRED_CONTEXT below, which is a
+  //    hand-ported copy of the relevant SKILL.md prose. Keep it in sync by
+  //    hand when SKILL.md's rules change (same discipline as
+  //    alfred_v2_standalone_skill.md).
+  // ==========================================================================
+
+  // Built fresh per chat send (not a frozen const) so a long-lived tab doesn't tell Alfred
+  // the wrong "today's date" -- see updateTimeContext() above for the same principle applied
+  // to the dashboard's own rendering.
+  function buildAlfredContext() {
+    return `You are Alfred, Bryan Soo's personal assistant for quarterly goals,
+daily to-dos, and life admin. Persona: loosely an Alfred Pennyworth-style butler -- brief,
+competent, quietly caring, and willing to offer real opinions grounded in the data. Be direct
+and useful; don't overplay the persona.
+
+Today's date: ${todayStr}. Current quarter runs ${QUARTER_START} to ${QUARTER_END}.
+
+You have tools to read and write Bryan's data (goals, goal progress, tasks, recurring admin,
+narrative notes, job applications, networking contacts, daily calendar context), to fetch raw
+data from his Google Calendar, the two job-search Google Sheets, and Gmail, and (added
+2026-09-14) to search or fetch general web pages via fetchWebRaw (Parallel Search connector) --
+this is the ONLY way you reach an arbitrary external URL; nothing else does. This is a fresh
+session with no memory of earlier chats -- read whatever you need with the tools rather than
+assuming anything. The fetch tools return data completely unprocessed -- you are responsible for
+interpreting it correctly, per these rules:
+
+${sources ? `- Fixed source IDs (use these exactly -- never ask Bryan for them, they don't change): Fitness
+  calendar = "${sources.fitness_calendar_id}"; primary calendar = "${sources.primary_calendar_id}"; job tracker sheet
+  ("${sources.job_sheet_name}") = "${sources.job_sheet_id}"; networking sheet ("${sources.networking_sheet_name}") = "${sources.networking_sheet_id}".`
+  : `- Source IDs are NOT configured (the config/sources doc is missing or unreadable), so calendar
+  and sheet syncs cannot run -- say so plainly if one is needed; never guess or ask for an id.`}
+- Fitness calendar sync (feeds the exercise goal, id exercise-q3-2026): discard any event whose
+  start time is later than the current moment -- a scheduled-but-not-yet-happened workout is not
+  a completed one. A "workouts" doc should be keyed by the calendar event id (idempotent re-sync).
+  Weekly score = min(count, 5) / 5 * 10, count = workouts that week (Monday-start ISO week).
+- The job tracker sheet's dates are M/D/YYYY (US format) -- do not parse as D/M/YYYY.
+- The networking sheet's dates are D/M/YYYY (UK format) -- the opposite of the job tracker.
+- fetchSheetRaw returns ONE PAGE at a time as {header, rowsText, nextRow, totalRows} -- if
+  nextRow is not null, call it again with startRow: nextRow and keep going until nextRow is
+  null, then concatenate all rowsText values (in call order, after header) into one markdown-
+  table blob before parsing rows/dates. Never treat a single page as the whole sheet.
+- Job-search leading indicators: count new applications and new "Had Conversation" networking
+  rows per ISO week. "connections" = any networking-sheet row in the period regardless of status
+  (Pending/Messaged/Connected all count as outreach effort) -- keep this separate from
+  "networking_conversations" (Had Conversation only).
+- Job-search lagging indicators (interviews/responses/offers): the tracker has no timestamp for
+  *when* an outcome changed, only the original application date. Only backfill the CURRENT ISO
+  week (from Monday) based on Bryan directly telling you what happened -- never trawl older
+  tracker/email history to reconstruct past weeks.
+- Job-search scoring is self-relative (type "self_relative_rolling_average" on the goal doc) --
+  each week is scored against Bryan's own trailing average, never against an invented numeric
+  target. Never invent a weekly target on his behalf for any goal. Recompute and write "score" on
+  the CURRENT week's goal_progress doc immediately after any write that touches its raw_inputs --
+  never wait for the week to close. A current-week score is inherently provisional (it'll keep
+  moving as the week goes on); when you report one, say so explicitly so Bryan doesn't mistake it
+  for the week's final number. Early in a week, a live score often reads lower than it will end up
+  once metrics that accumulate later (like applications) catch up -- mention that if a very early
+  score looks surprisingly low, don't try to correct for it.
+- Job-search manual/self-reported effort (added 2026-09-16): interview_prep_hours, portfolio_work,
+  and a generic other_effort (count of anything clearly job-search-directed that doesn't fit a
+  named metric -- a hackathon signup, outreach not yet on the networking sheet, etc.) have no
+  automated source. Two triggers, either way logged via readCollection (get the current week's
+  goal_progress doc) then writeGoalProgress (set, full merged doc -- read-merge-write, never send
+  just the one field): (1) Bryan states job-search effort directly in this chat that the
+  tracker/networking-sheet/Gmail sync won't catch -- merge it into the matching raw_inputs field
+  (add to any existing value, don't overwrite), recompute and write score same as any other
+  raw_inputs change. (2) A tasks doc with linked_goal_id "job-search-q3-2026" and status "done"
+  shows up -- don't infer effort from estimated_minutes or the description; ask Bryan what he did
+  and how long it took (skip asking only if he already said in the same message), then log it the
+  same way.
+- Ad-hoc tasks: a plain reminder with no due_date is a backlog item, not scoped to any week, and
+  never counts toward a period's to-do total. source:"ad_hoc" tasks get accepted_at = created_at
+  at creation (logging it is accepting it). source:"suggested" tasks only get accepted_at set
+  when Bryan actually engages with them in chat -- not just by being shown a brief. The dashboard
+  no longer has its own add-task control (removed 2026-09-14) -- this chat (or a Code-tab session)
+  is the only way to log a new ad-hoc task now.
+- When Bryan logs an ad-hoc task without saying whether it has a due date, ASK him ("Does that
+  need a due date, or is it just a reminder?") before writing it, rather than silently defaulting
+  to no due date. Not every ad-hoc task needs one -- if he says no, or it's clearly just a
+  backlog note, write it with due_date omitted, same as before. This is just about not assuming
+  silence means "no date" without checking.
+- To-do counting ("how many items were on my to-do list last week / how many did I complete"):
+  use readCollection on tasks with NO status filter and NO due-date-range filter up front -- done
+  and dismissed tasks are exactly what this question needs, so pre-filtering to pending or
+  filtering by due_date before checking source will silently drop the tasks that matter. Then for
+  each task: source:"suggested" counts toward the period if accepted_at falls in it, OR status is
+  done and completed_at falls in it. source:"ad_hoc" counts only if due_date falls in it. Never
+  substitute created_at for either field. "Completed" = the same filtered set restricted to
+  status:"done". Check every task's actual fields against these rules -- don't eyeball dates.
+- Every suggested task must be written to the tasks collection (source:"suggested"), never just
+  spoken -- the dashboard only shows what's actually written.
+- A suggested task's due_date, when set, always means SCHEDULED FOR that day (e.g. a milestone
+  session you proposed for Thursday) -- it only appears in Today's to-do on the day itself or once
+  overdue, never early (surface_early doesn't apply to suggested tasks, ad_hoc-only). A suggested
+  task with no due_date always shows (the normal daily-nudge case). If Bryan asks why a scheduled
+  session isn't showing yet, this is why -- it's working as intended, not a bug.
+- When Bryan asks to add one or more items "to my to-do list for today" (or similar), write one
+  writeTask call per item (source:"ad_hoc", due_date set to today's date) -- a due_date of today
+  is what promotes an ad-hoc task into "Today's to-do" rather than leaving it in the backlog. A
+  plain "remind me to..." with no mention of today/a date gets no due_date, per the rule above.
+- A due_date can mean two different things -- tell them apart from how Bryan phrases it. A
+  DEADLINE ("by Friday", "before the weekend", "need to sort this by X") should surface early so
+  he doesn't miss it -- leave surface_early omitted (defaults true), which surfaces it in Today's
+  to-do up to 3 days ahead of the date plus if overdue. A task SCHEDULED for a specific day ("on
+  Tuesday", "do X Thursday") is different -- he's deliberately deferring it to that day, not
+  asking to be warned early -- so set surface_early:false, which keeps it fully invisible on the
+  dashboard (not even in the Ad-hoc backlog -- purely a database row until then, changed
+  2026-09-15, Bryan's call) until that day arrives, when it surfaces in Today's to-do same as a
+  deadline, and stays surfaced if it slips past. When genuinely ambiguous, ask rather than guess.
+- Weekly-cap habit goal (the goal whose tracking_method is binary_checkin): no daily check-in
+  prompt (removed 2026-09-14, Bryan's call -- he doesn't want to log this every day). Only write a
+  goal_progress day doc (id "<goal_id>_<date>", raw_inputs: {count: N}, nothing else -- no rolling
+  count field) when Bryan actually reports an occurrence (or explicitly says there was none) that
+  day -- never ask proactively during a normal chat
+  or brief. Exception: if readCollection on goal_progress for this goal shows nothing logged in
+  the trailing 7 days, and today is Sunday evening or Monday morning, proactively ask Bryan how
+  the past week went. The count that matters is a CALENDAR-WEEK total (Mon-Sun), not a rolling
+  7-day count (changed 2026-09-14 -- the rolling version showed a stale, still-in-window count on
+  a fresh Monday instead of resetting to 0, which is what Bryan actually expects): compute it live
+  by summing raw_inputs.count across every day doc whose period_start falls in the current
+  Monday-Sunday week, every time you're asked -- never store or quote a saved aggregate, since a
+  stored figure only updates when Bryan reports and goes stale the moment a few days pass without
+  one. Flag it if that live weekly sum is at or over the cap of 2.
+- Recurring admin next_due_date formulas: interval_days -> last_completed_date + interval_days;
+  day_of_month -> the next occurrence of that day on/after today; days_before_month_end -> the
+  last day of the target month minus that many days.
+- Calendar outlook (daily_context): whenever you fetch or discuss upcoming calendar events (not
+  just when Bryan explicitly says "sync"), merge both the primary and Fitness calendars across
+  today through today+6 days, forward-looking only (discard events that have already ended). This
+  is informational, not a task list. IMPORTANT -- answering Bryan in chat is not enough on its
+  own: you must also call writeDailyContext once per date that has at least one event, so the
+  dashboard's "Calendar outlook" panel (which reads ONLY from the daily_context collection, not
+  from anything you say) actually reflects what you just told him. Each item in the events array
+  MUST use exactly these keys -- {title, start, end, source} -- where title is the event's plain
+  name (never omit or rename it -- the raw calendar API field is called "summary", not "title";
+  do not pass it through as-is) and source is the literal string "primary" or "fitness" (not a
+  calendar display name like "Fitness"). The panel reads e.title specifically -- any other key
+  name renders a blank, titleless card, not an error, so this is easy to get wrong silently
+  (confirmed 2026-09-15: a sync wrote {summary, calendar} instead and three days' cards showed up
+  empty). A date with no events gets no
+  call (or, if a daily_context doc already exists for a date that no longer has any events -- e.g.
+  a meeting got cancelled -- overwrite it with an empty events array so the panel doesn't show a
+  stale entry). Do this for every date in the 7-day window on every calendar check, not only the
+  date(s) you happen to mention out loud. GUARD (confirmed 2026-09-17): before clearing any
+  existing daily_context doc to empty, sanity-check the fetch itself -- if fetchCalendarRaw
+  returns zero events combined, across BOTH calendars, for the ENTIRE 7-day window, and Bryan's
+  existing daily_context docs for that window weren't already empty, treat that as a likely
+  failed read, not proof the week is clear: don't write anything, leave the existing docs alone,
+  and tell Bryan the calendar read came back suspiciously empty so he can retry -- a bad fetch
+  applied mechanically across the whole window is what once wiped the entire outlook panel blank,
+  even after a refresh. Clearing an individual stale date is still correct when the fetch
+  otherwise succeeded normally elsewhere in the window.
+- Today's events also become a to-do (added 2026-09-17): after writing daily_context for the
+  window, look specifically at today's events (from BOTH calendars -- a gym session or match
+  becomes a to-do today too, independent of its separate role in the exercise goal's workouts
+  sync) and for each one, first check via readCollection whether a task with id
+  "calendar-<calendar_event_id>" already exists. If not, call writeTask with that id (dedup key,
+  same convention as workouts docs keyed by calendar_event_id), source:"suggested", due_date =
+  today's ISO date, and description = the event's title plus its start time (e.g. "AI Meet-up
+  (6:00pm)"). If a task with that id already exists, leave it alone -- writeTask does a full set()
+  when given an id, so calling it again would silently reset a task Bryan already completed or
+  dismissed back to pending. This only applies to today's events; the rest of the week's outlook
+  stays informational only, not a task list.
+- Never invent sample or placeholder data anywhere -- an empty collection is an honest empty
+  state, not something to fill in.
+- Structural goal changes (target, scoring formula) are fine to make here in chat -- note the
+  change with a dated entry in narrative/changelog when you do.
+- Sub-goals (tracking_method "milestone_tasks", added 2026-09-14): a finite, one-off project with
+  its own due_date (independent of the quarter), e.g. "finish a course by Sept 30" -- not a
+  recurring weekly-scored goal. It's still just a goals doc, with parent_goal_id (nullable),
+  due_date, estimated_minutes (the real, checkable total time for the material), and optional
+  source_url. To create one: (1) establish the real scope first -- if Bryan gives a URL (a course,
+  a syllabus), use fetchWebRaw (mode:'fetch', that url, objective describing what you need --
+  lesson/module count, stated duration) rather than guessing; if fetchWebRaw can't find a clear
+  duration/lesson count, or Bryan hasn't given a URL, ask him directly instead of inventing a
+  number; (2)
+  propose a pace in MINUTES/SESSIONS ("two 45-min sessions this week"), never "N modules/week",
+  based on that real scope and days remaining, and get Bryan to confirm the cadence before writing
+  anything -- same never-invent-a-target rule as job-search; (3) call updateGoal with a new goalId
+  to write the goals doc (it creates the doc if the id doesn't exist yet); (4) call writeTask once
+  per agreed session (source:"suggested", linked_goal_id = the sub-goal's id, due_date = that
+  session's date, estimated_minutes = that session's chunk, id
+  "suggested-milestone-<goal_id>-<date>" so a later replan overwrites rather than duplicates). If
+  Bryan named a parent goal, ask SEPARATELY whether he wants the time to count toward that
+  parent's score -- never assume yes just because a parent was named.
+  Progress is ALWAYS computed live: percent complete = (sum of estimated_minutes across the
+  sub-goal's linked tasks with status "done") / goal.estimated_minutes -- via readCollection on
+  tasks filtered by linked_goal_id, never a stored aggregate.
+  Replan reactively, every time you're invoked and a sub-goal is still open: compare progress so
+  far against the pace needed to hit due_date, and if Bryan's behind or ahead, writeTask/updateTask
+  new "suggested-milestone-*" sessions for the remaining time -- never touch a task already done,
+  and don't manufacture one session per remaining day if the remaining content is small.
+  If Bryan opted into the scoring effect on a parent goal: add a TEMPORARY weighted component to
+  the parent's scoring_formula JSON (via updateGoal), taking the weight out of its existing
+  components proportionally so they still sum to 1.0 -- e.g. for job-search-q3-2026, reduce
+  leading_weight from 0.6 to 0.5 and add milestone_weight:0.1 plus milestone_goal_id. Score it each
+  week as minutes_logged_this_week / expected_weekly_pace, where expected_weekly_pace is fixed
+  ONCE at sub-goal creation (remaining_minutes / remaining_weeks at that time) -- never recomputed
+  fresh each week. Remove it and restore the original weights when the sub-goal closes, logging
+  both the addition and the removal via appendNarrative to changelog.
+  Finishing a sub-goal's tasks NEVER changes the sub-goal's own goals doc -- its status stays
+  "active" and it keeps rendering, at 100%, exactly like a completed main goal does. Never
+  updateGoal a sub-goal's status to anything else on completion; it's retired only at the normal
+  quarter-end close-out, alongside every other goal.
+
+Keep replies brief -- a quick, useful answer, not a full report, unless Bryan explicitly asks for
+something longer (like a full brief).`;
+  }
+
+  let mcpNs = null;
+  async function getMcp() {
+    if (mcpNs === null) mcpNs = (window.claude && (await window.claude.use("mcp"))) || false;
+    return mcpNs || null;
+  }
+
+  async function mcpPayload(server, tool, input) {
+    const mcp = await getMcp();
+    if (!mcp) throw new Error(server + " is not connected in this view.");
+    const result = await mcp.callTool(server, tool, input);
+    return result.payload !== undefined ? result.payload : result;
+  }
+
+  function docsFrom(snap) { return snap.docs.map(d => ({ id: d.id, ...d.data() })); }
+
+  // ---- Tool functions exposed to sample() -- thin fetch/write boundary only ----
+  const TOOLS = [
+    {
+      name: "fetchCalendarRaw",
+      description: "Fetch raw events (id, summary, start, end, status) from a Google Calendar between two ISO dates. calendarId: use the exact Fitness or primary calendar id Bryan's data uses. Returns events as-is, no filtering -- you decide what counts.",
+      inputSchema: { type: "object", properties: {
+        calendarId: { type: "string" }, startDate: { type: "string" }, endDate: { type: "string" }
+      }, required: ["calendarId", "startDate", "endDate"] },
+      async execute(input) {
+        const payload = await mcpPayload("Google Calendar", "list_events", {
+          calendarId: String(input.calendarId),
+          startTime: input.startDate + "T00:00:00Z",
+          endTime: input.endDate + "T23:59:59Z",
+          pageSize: 250,
+        });
+        const events = (payload && payload.events) || [];
+        return events.map(e => ({ id: e.id, summary: e.summary, start: e.start, end: e.end, status: e.status }));
+      },
+    },
+    {
+      name: "fetchSheetRaw",
+      description: "Fetch one page of the raw text content of one of the two job-search Google Sheets (job tracker or networking sheet) by file id, as markdown-table text. Returns {header, rowsText, startRow, nextRow, totalRows} -- a page of data rows, capped to stay under the connector's tool-return size limit. If nextRow is not null, call again with startRow: nextRow to get the next page, and concatenate all rowsText values (in call order, after header) into one blob before parsing rows/dates per the date-format rules in your instructions. nextRow: null means you have the whole sheet.",
+      inputSchema: { type: "object", properties: {
+        fileId: { type: "string" },
+        startRow: { type: "number", description: "0-indexed data row (excluding header) to resume from. Omit or 0 for the first page." },
+      }, required: ["fileId"] },
+      async execute(input) {
+        const payload = await mcpPayload("Google Drive", "read_file_content", { fileId: String(input.fileId) });
+        const fullText = (payload && payload.fileContent) || "";
+        const lines = fullText.split("\n");
+        // Header capture: the first line, plus a markdown-table separator line if present
+        // (cells made only of -, :, |, whitespace) -- don't hardcode "first 2 lines", some
+        // exports may omit the separator.
+        let headerEnd = lines.length > 0 ? 1 : 0;
+        if (headerEnd < lines.length && /^[\s|:-]+$/.test(lines[headerEnd])) headerEnd += 1;
+        const header = lines.slice(0, headerEnd).join("\n");
+        const dataRows = lines.slice(headerEnd);
+        const totalRows = dataRows.length;
+
+        const startRow = Number(input.startRow) || 0;
+        const TARGET_BYTES = 28 * 1024; // safety margin under the connector's 32KB tool-return cap
+        const encoder = new TextEncoder();
+        let rowsText = "";
+        let nextRow = null;
+        let i = startRow;
+        for (; i < totalRows; i++) {
+          const candidate = rowsText ? rowsText + "\n" + dataRows[i] : dataRows[i];
+          const size = encoder.encode(JSON.stringify({ header, rowsText: candidate, startRow, nextRow: i + 1, totalRows })).length;
+          if (size > TARGET_BYTES) {
+            if (rowsText) { nextRow = i; break; } // stop before this row, resume here next call
+            rowsText = candidate; // single oversized row: include anyway, never drop a row
+            i++;
+            nextRow = i < totalRows ? i : null;
+            break;
+          }
+          rowsText = candidate;
+        }
+        if (i >= totalRows) nextRow = null; // consumed every remaining row this call
+        return { header, rowsText, startRow, nextRow, totalRows };
+      },
+    },
+    {
+      name: "fetchGmailRaw",
+      description: "Search Gmail with a query string (Gmail search syntax) and get back raw thread summaries (subject, sender, date, snippet). No interpretation applied.",
+      inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+      async execute(input) {
+        const payload = await mcpPayload("Gmail", "search_threads", { query: String(input.query), pageSize: 20 });
+        const threads = (payload && payload.threads) || [];
+        return threads.map(t => {
+          const m = (t.messages && t.messages[0]) || {};
+          return { threadId: t.id, subject: m.subject, sender: m.sender, date: m.date, snippet: m.snippet };
+        });
+      },
+    },
+    {
+      name: "readCollection",
+      description: "Read documents from one of Bryan's data collections: goals, goal_progress, tasks, recurring_admin, workouts, job_applications, networking_contacts, or daily_context. Optionally filter with `where` (an array of [field, operator, value] triples; operator is one of ==, !=, <, <=, >, >=, in, array-contains -- e.g. [[\"status\",\"==\",\"active\"]] or [[\"date\",\">=\",\"2026-09-14\"],[\"date\",\"<=\",\"2026-09-20\"]]), order with `orderBy`, and cap results with `limit`. Returns an array of matching documents, each including its id.",
+      inputSchema: { type: "object", properties: {
+        collection: { type: "string", enum: ["goals", "goal_progress", "tasks", "recurring_admin", "workouts", "job_applications", "networking_contacts", "daily_context"] },
+        where: { type: "array", items: { type: "array" }, description: "[field, operator, value] triples." },
+        orderBy: { type: "string" },
+        limit: { type: "number" },
+      }, required: ["collection"] },
+      async execute(input) {
+        let q = dbClient.collection(String(input.collection));
+        if (Array.isArray(input.where)) {
+          for (const clause of input.where) {
+            if (Array.isArray(clause) && clause.length === 3) q = q.where(clause[0], clause[1], clause[2]);
+          }
+        }
+        if (input.orderBy) q = q.orderBy(String(input.orderBy));
+        if (input.limit) q = q.limit(Number(input.limit));
+        return docsFrom(await q.get());
+      },
+    },
+    {
+      name: "readNarrative",
+      description: "Read a narrative doc: 'memory' (durable observations about Bryan) or 'changelog' (history of tracking-system changes).",
+      inputSchema: { type: "object", properties: { doc: { type: "string", enum: ["memory", "changelog"] } }, required: ["doc"] },
+      async execute(input) {
+        const snap = await dbClient.doc("narrative/" + String(input.doc)).get();
+        return snap.exists ? snap.data() : { content: "" };
+      },
+    },
+    {
+      name: "writeTask",
+      description: "Create a new task. source must be 'ad_hoc' or 'suggested'. For ad_hoc, set accepted_at equal to created_at (both now). For suggested, leave accepted_at null.",
+      inputSchema: { type: "object", properties: {
+        id: { type: "string" }, description: { type: "string" }, source: { type: "string", enum: ["ad_hoc", "suggested"] },
+        linked_goal_id: { type: "string", description: "Omit if not linked to a goal." },
+        due_date: { type: "string", description: "ISO date (YYYY-MM-DD). Omit if there's no due date." },
+        surface_early: { type: "boolean", description: "Omit or true for a DEADLINE ('by Friday') -- surfaces in Today's to-do up to 3 days early plus overdue, staying in the ad-hoc backlog until then. Set false for a task SCHEDULED for a specific day ('on Tuesday', 'this Thursday') -- it stays fully invisible on the dashboard (not even the backlog) until that day, then surfaces in Today's to-do." },
+        accepted_at: { type: "string", description: "ISO timestamp. Omit for a suggested task not yet accepted." },
+        estimated_minutes: { type: "number", description: "Only for a task linked to a milestone_tasks sub-goal (linked_goal_id points at one) -- the chunk of that sub-goal's total estimated_minutes this session represents, used to compute its live progress bar. Omit for anything else." },
+      }, required: ["description", "source"] },
+      async execute(input) {
+        const nowIso = new Date().toISOString();
+        const data = {
+          description: String(input.description), source: input.source,
+          linked_goal_id: input.linked_goal_id || null, status: "pending",
+          due_date: input.due_date || null, created_at: nowIso, completed_at: null,
+          accepted_at: input.source === "ad_hoc" ? nowIso : (input.accepted_at || null),
+        };
+        if (input.surface_early === false) data.surface_early = false;
+        if (input.estimated_minutes != null) data.estimated_minutes = Number(input.estimated_minutes);
+        if (input.id) { await dbClient.doc("tasks/" + String(input.id)).set(data); return { id: input.id }; }
+        const ref = await dbClient.collection("tasks").add(data);
+        return { id: ref.id };
+      },
+    },
+    {
+      name: "updateTask",
+      description: "Update fields on an existing task by id (e.g. status, accepted_at, due_date, completed_at).",
+      inputSchema: { type: "object", properties: { id: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["id", "fields"] },
+      async execute(input) { await dbClient.doc("tasks/" + String(input.id)).update(input.fields || {}); return { ok: true }; },
+    },
+    {
+      name: "writeGoalProgress",
+      description: "Set a goal_progress doc. Use doc id '<goal_id>_<period_start>' so re-writing the same period overwrites rather than duplicates.",
+      inputSchema: { type: "object", properties: { id: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["id", "fields"] },
+      async execute(input) { await dbClient.doc("goal_progress/" + String(input.id)).set(input.fields || {}); return { ok: true }; },
+    },
+    {
+      name: "updateGoal",
+      description: "Create or update a goal doc by id -- last_synced_date after a sync, structural fields (target, scoring_formula) when Bryan asks for a change in chat, or writing a brand-new goal (e.g. a milestone_tasks sub-goal) when goalId doesn't exist yet. Merges into an existing doc (never wipes fields you don't pass); creates it fresh if the id doesn't exist yet.",
+      inputSchema: { type: "object", properties: { goalId: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["goalId", "fields"] },
+      async execute(input) {
+        const ref = dbClient.doc("goals/" + String(input.goalId));
+        const snap = await ref.get();
+        if (snap.exists) { await ref.update(input.fields || {}); } else { await ref.set(input.fields || {}); }
+        return { ok: true };
+      },
+    },
+    {
+      name: "writeWorkout",
+      description: "Set a workouts doc, keyed by calendar_event_id as the doc id (idempotent re-sync).",
+      inputSchema: { type: "object", properties: { id: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["id", "fields"] },
+      async execute(input) { await dbClient.doc("workouts/" + String(input.id)).set(input.fields || {}); return { ok: true }; },
+    },
+    {
+      name: "writeRecurringAdmin",
+      description: "Create or update a recurring_admin doc by id -- merges into an existing doc (never wipes fields you don't pass), creates it fresh if the id doesn't exist yet. Consolidated 2026-09-14 from two separate tools (writeRecurringAdmin/updateRecurringAdmin) to make room for fetchWebRaw within the 16-tool cap -- same exists-check pattern as updateGoal.",
+      inputSchema: { type: "object", properties: { id: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["id", "fields"] },
+      async execute(input) {
+        const ref = dbClient.doc("recurring_admin/" + String(input.id));
+        const snap = await ref.get();
+        if (snap.exists) { await ref.update(input.fields || {}); } else { await ref.set(input.fields || {}); }
+        return { ok: true };
+      },
+    },
+    {
+      name: "fetchWebRaw",
+      description: "Search the web or fetch specific URLs via Bryan's connected Parallel Search connector -- the only general web access this chat has (no other tool reaches an arbitrary external URL). mode:'search' takes searchQueries (1-3 short keyword queries) and returns excerpted results; mode:'fetch' takes urls (specific pages, e.g. a course syllabus) and returns their excerpts. Always pass a specific objective. Returns unprocessed excerpts -- you interpret them, e.g. reading a course's real lesson count/duration before proposing a sub-goal study plan (see 'Sub-goals').",
+      inputSchema: { type: "object", properties: {
+        mode: { type: "string", enum: ["search", "fetch"] },
+        objective: { type: "string", description: "What you're trying to find out." },
+        searchQueries: { type: "array", items: { type: "string" }, description: "For mode:'search' -- 1-3 short keyword queries." },
+        urls: { type: "array", items: { type: "string" }, description: "For mode:'fetch' -- one or more specific URLs to extract content from." },
+      }, required: ["mode", "objective"] },
+      async execute(input) {
+        const sessionId = "alfred-dashboard-" + todayStr;
+        if (input.mode === "fetch") {
+          const payload = await mcpPayload("Parallel Search", "web_fetch", {
+            urls: input.urls || [], objective: String(input.objective), session_id: sessionId,
+          });
+          return ((payload && payload.results) || []).map(r => ({ url: r.url, title: r.title, excerpts: r.excerpts, full_content: r.full_content }));
+        }
+        const payload = await mcpPayload("Parallel Search", "web_search", {
+          objective: String(input.objective), search_queries: input.searchQueries || [], session_id: sessionId,
+        });
+        return ((payload && payload.results) || []).map(r => ({ url: r.url, title: r.title, excerpts: r.excerpts }));
+      },
+    },
+    {
+      name: "writeDailyContext",
+      description: "Set the calendar outlook doc for one ISO date -- overwrites the whole doc (it's a snapshot, not a log). Each event MUST use {title, start, end, source} -- title is the event's plain name (the raw calendar API field is called \"summary\", not \"title\" -- rename it), source is the literal string \"primary\" or \"fitness\". Any other key name (e.g. summary/calendar) renders a blank, titleless card on the dashboard, not an error.",
+      inputSchema: { type: "object", properties: { date: { type: "string" }, events: { type: "array", items: { type: "object", properties: { title: { type: "string" }, start: { type: "string" }, end: { type: "string" }, source: { type: "string", enum: ["primary", "fitness"] } }, required: ["title", "start", "source"] } } }, required: ["date", "events"] },
+      async execute(input) {
+        await dbClient.doc("daily_context/" + String(input.date)).set({ date: input.date, events: input.events || [], synced_at: new Date().toISOString() });
+        return { ok: true };
+      },
+    },
+    {
+      name: "upsertJobApplication",
+      description: "Set the last-known snapshot for one job application by a stable id (company+role+application_date slug).",
+      inputSchema: { type: "object", properties: { id: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["id", "fields"] },
+      async execute(input) { await dbClient.doc("job_applications/" + String(input.id)).set(input.fields || {}); return { ok: true }; },
+    },
+    {
+      name: "upsertNetworkingContact",
+      description: "Set the last-known snapshot for one networking contact by a stable id (company+name slug).",
+      inputSchema: { type: "object", properties: { id: { type: "string" }, fields: { type: "object", properties: {}, additionalProperties: true } }, required: ["id", "fields"] },
+      async execute(input) { await dbClient.doc("networking_contacts/" + String(input.id)).set(input.fields || {}); return { ok: true }; },
+    },
+    {
+      name: "appendNarrative",
+      description: "Append a dated entry to a narrative doc: 'memory' (durable observations about Bryan) or 'changelog' (history of changes to the tracking system itself -- goal formula changes, quarter transitions). Reads current content and writes it back with the new line added.",
+      inputSchema: { type: "object", properties: { doc: { type: "string", enum: ["memory", "changelog"] }, text: { type: "string" } }, required: ["doc", "text"] },
+      async execute(input) {
+        const ref = dbClient.doc("narrative/" + String(input.doc));
+        const snap = await ref.get();
+        const current = (snap.exists && snap.data().content) || "";
+        const line = "\n- " + todayStr + ": " + String(input.text);
+        await ref.set({ content: current + line });
+        return { ok: true };
+      },
+    },
+  ];
+
+  // ---- Connector consent + status ----
+  let permsRequested = false;
+  async function ensureChatPermissions() {
+    if (permsRequested) return;
+    permsRequested = true;
+    try {
+      const perms = (window.claude && (await window.claude.use("permissions"))) || null;
+      if (perms) await perms.request(["sample", "mcp:Gmail", "mcp:Google Calendar", "mcp:Google Drive", "mcp:Parallel Search"]);
+    } catch (e) { /* individual tool calls will surface their own errors */ }
+    refreshConnectorStatus();
+  }
+
+  async function refreshConnectorStatus() {
+    const el = document.getElementById("connector-status");
+    if (!el) return;
+    try {
+      const perms = (window.claude && (await window.claude.use("permissions"))) || null;
+      if (!perms) { el.textContent = ""; return; }
+      const states = await perms.state();
+      const names = [["sample", "Alfred"], ["mcp:Gmail", "Gmail"], ["mcp:Google Calendar", "Calendar"], ["mcp:Google Drive", "Drive"], ["mcp:Parallel Search", "Web"]];
+      el.innerHTML = names.map(([key, label]) => {
+        const st = states[key] || "unavailable";
+        const cls = st === "granted" ? "ok" : (st === "prompt" ? "soon" : "over");
+        return `<span class="admin-due ${cls}" style="margin-left:6px;">${escapeHtml(label)}: ${escapeHtml(st)}</span>`;
+      }).join("");
+    } catch (e) { el.textContent = ""; }
+  }
+
+  // ---- Chat UI ----
+  const chatMessagesEl = document.getElementById("chat-messages");
+  const chatInput = document.getElementById("chat-input");
+  const chatSendBtn = document.getElementById("chat-send-btn");
+  let chatTranscript = []; // in-memory only, per SKILL.md's "fresh session" model -- not persisted
+  let chatBusy = false;
+
+  function appendChatBubble(role, text) {
+    const empty = chatMessagesEl.querySelector(".chat-empty");
+    if (empty) empty.remove();
+    const el = document.createElement("div");
+    el.className = "chat-msg " + role;
+    el.textContent = text;
+    chatMessagesEl.appendChild(el);
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    return el;
+  }
+
+  async function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text || chatBusy) return;
+    updateTimeContext();
+    chatBusy = true;
+    chatSendBtn.disabled = true;
+    chatInput.value = "";
+    chatInput.style.height = "auto";
+    appendChatBubble("user", text);
+    chatTranscript.push({ role: "user", content: text });
+    const thinkingEl = appendChatBubble("assistant thinking", "Thinking…");
+
+    try {
+      const sample = (window.claude && (await window.claude.use("sample"))) || null;
+      if (!sample) {
+        thinkingEl.className = "chat-msg error";
+        thinkingEl.textContent = "Chat isn't available in this view.";
+        return;
+      }
+      await loadSources();
+      const turns = [{ role: "user", content: buildAlfredContext() }, ...chatTranscript];
+      const result = await sample(turns, {
+        cache: false,
+        tools: TOOLS,
+        modelTier: "default",
+        onText: ({ text }) => { thinkingEl.className = "chat-msg assistant"; thinkingEl.textContent = text; },
+      });
+      thinkingEl.className = "chat-msg assistant";
+      thinkingEl.textContent = result.text;
+      chatTranscript.push({ role: "assistant", content: result.text });
+      refreshConnectorStatus();
+    } catch (e) {
+      console.error("Alfred sample() error:", e);
+      thinkingEl.className = "chat-msg error";
+      const detail = (e && e.message) ? ": " + e.message : "";
+      thinkingEl.textContent = (e && e.text) ? e.text : ("Alfred couldn't answer that (" + (e && e.code || "error") + detail + ").");
+    } finally {
+      chatBusy = false;
+      chatSendBtn.disabled = false;
+    }
+  }
+
+  chatInput.addEventListener("focus", ensureChatPermissions, { once: true });
+  chatInput.addEventListener("input", () => {
+    chatInput.style.height = "auto";
+    chatInput.style.height = Math.min(120, chatInput.scrollHeight) + "px";
+  });
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+  });
+  chatSendBtn.addEventListener("click", sendChatMessage);
+  refreshConnectorStatus();
+
+  main();
+})();
+</script>
+</body>
+</html>
